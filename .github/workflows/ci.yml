@@ -78,7 +78,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: target/site/allure-maven-plugin
           destination_dir: allure-report
-          force_orphan: true   # creates gh-pages branch automatically if it doesn't exist
+          force_orphan: true
+          enable_jekyll: false   # prevents Jekyll from stripping Allure's _* files
 
       # ── Publish test results as GitHub check ─────────────────────────────────
       - name: Publish test results
