@@ -4,28 +4,35 @@ Automated REST API test suite for the [WeatherAI API](https://weather-ai.co/docs
 
 [![CI](https://github.com/YOUR_GITHUB_USERNAME/WeatherAI_API_Test/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/WeatherAI_API_Test/actions/workflows/ci.yml)
 
-> **Stack:** Java 17 · Maven · RestAssured 5 · JUnit 5 · AssertJ · Allure · iText 7 (PDF reports)
+> **Stack:** Java 17 · Maven · RestAssured 5 · JUnit 5 · AssertJ · Allure · iText 7
+
+> ⚠️ Replace `YOUR_GITHUB_USERNAME` in the badge URL above with your actual GitHub username.
 
 ---
 
 ## Table of Contents
+
+- [Prerequisites](#prerequisites)
 - [Setup](#setup)
 - [Running the Tests](#running-the-tests)
 - [Test Strategy](#test-strategy)
 - [Project Structure](#project-structure)
+- [Reports](#reports)
 - [CI / GitHub Actions](#ci--github-actions)
 
 ---
 
+## Prerequisites
+
+| Tool | Minimum Version |
+|------|----------------|
+| Java JDK | 17 |
+| Maven | 3.8 |
+| Allure CLI *(optional — for local HTML report)* | 2.x |
+
+---
+
 ## Setup
-
-### Prerequisites
-
-| Tool | Version |
-|------|---------|
-| Java JDK | 17+ |
-| Maven | 3.8+ |
-| Allure CLI (optional, for HTML report) | 2.x |
 
 ### 1. Clone the repository
 
@@ -36,36 +43,31 @@ cd WeatherAI_API_Test
 
 ### 2. Set your API key
 
-The test suite reads the API key from an environment variable.  
-Get your free key from [weather-ai.co](https://weather-ai.co).
+The suite reads the API key from the `WAI_API_KEY` environment variable.  
+Get your free key from [weather-ai.co](https://weather-ai.co) → Dashboard → API Keys.
 
-**Windows CMD — set for current session then run:**
+> **Never commit the real key to git.** `config.properties` is gitignored for this reason.
+
+**Windows CMD — current session:**
 ```cmd
 set WAI_API_KEY=wai_your_key_here
-mvn clean test
 ```
 
-**Make it permanent (survives terminal restarts):**
+**Windows CMD — permanent (survives restarts):**
 ```cmd
 setx WAI_API_KEY "wai_your_key_here"
 ```
-Then open a new terminal and run `mvn clean test` — no `set` needed.
+Then open a new terminal — the key is available in every session from that point on.
 
 **Windows PowerShell:**
 ```powershell
 $env:WAI_API_KEY = "wai_your_key_here"
-mvn clean test
 ```
 
 **Linux / macOS:**
 ```bash
 export WAI_API_KEY=wai_your_key_here
-mvn clean test
 ```
-
-> Replace `wai_your_key_here` with your actual key from  
-> [weather-ai.co](https://weather-ai.co) → Dashboard → API Keys.  
-> **Never commit the real key to git** — `config.properties` is gitignored for this reason.
 
 ### 3. Install dependencies
 
@@ -77,42 +79,63 @@ mvn dependency:resolve
 
 ## Running the Tests
 
-### Run the full suite
+### Full suite
+
 ```cmd
 mvn clean test
 ```
 
-### Run by endpoint group
+### By endpoint group
 
 | Group | Command |
 |-------|---------|
-| All weather endpoints | `mvn test -Dtest="GetWeatherTests,GetForecastTests,GetCurrentTests,GetDailyTests,GetHourlyTests,GetForecast14Tests,GetInsightsTests,GetWeatherGeoTests,GetIpLookupTests,WeatherSchemaTests"` |
-| Common (auth/validation/errors) | `mvn test -Dtest="AuthenticationTests,AuthorizationTests,ValidationTests,RateLimitTests,ErrorHandlingTests"` |
+| Weather | `mvn test -Dtest="GetWeatherTests,GetForecastTests,GetCurrentTests,GetDailyTests,GetHourlyTests,GetForecast14Tests,GetInsightsTests,GetWeatherGeoTests,GetIpLookupTests,WeatherSchemaTests"` |
+| Common | `mvn test -Dtest="AuthenticationTests,AuthorizationTests,ValidationTests,RateLimitTests,ErrorHandlingTests"` |
 | Account | `mvn test -Dtest="UsageTests"` |
 | Webhooks | `mvn test -Dtest="CreateWebhookTests,GetWebhookTests,DeleteWebhookTests"` |
 | SMS | `mvn test -Dtest="SendSmsTests,SmsAlertTests,RegistrationTests,SmsStatsTests,SmsHealthTests"` |
 | Forestry | `mvn test -Dtest="CountTreesTests,TreeQuotaTests"` |
 
-### Run a single test class
+### Single class
+
 ```cmd
 mvn test -Dtest="GetWeatherTests"
 ```
 
-### Run a single test method
+### Single method
+
 ```cmd
 mvn test -Dtest="GetWeatherTests#validRequest_returns200"
 ```
 
-### Generate Allure HTML report
+---
+
+## Reports
+
+### Allure HTML report
+
 ```cmd
 mvn allure:report
 mvn allure:serve
 ```
 
+`allure:serve` generates the report and opens it in your browser automatically.
+
+Live report (published by CI after each push to `master`):  
+👉 `https://YOUR_GITHUB_USERNAME.github.io/WeatherAI_API_Test/allure-report/`
+
 ### PDF report
-Generated automatically after every `mvn test` run at:
+
+Generated automatically after every `mvn test` run:
+
 ```
 target/pdf-report/test-report.pdf
+```
+
+Open it with:
+
+```cmd
+start "" "target\pdf-report\test-report.pdf"
 ```
 
 ---
@@ -121,46 +144,33 @@ target/pdf-report/test-report.pdf
 
 ### Approach
 
-The suite tests the [WeatherAI REST API](https://weather-ai.co/docs) contract end-to-end using
-**black-box API testing** — no mocks, all requests hit the live API.
+Black-box API testing against the live [WeatherAI REST API](https://weather-ai.co/docs) — no mocks.  
+All 256 tests hit real endpoints.
 
 ### Key decisions
 
 **1. Client layer abstraction**  
-Each API section has a dedicated client class (`WeatherClient`, `SmsClient`, etc.)
-that encapsulates endpoint paths and parameters. Tests never construct HTTP
-requests directly — this makes refactoring a single endpoint change a one-file fix.
+Each API section has its own client class (`WeatherClient`, `SmsClient`, etc.) that encapsulates endpoint paths and parameters. Tests never build HTTP requests directly — a single endpoint change requires only one file to update.
 
 **2. Shared `RequestSpecConfig`**  
-A single factory provides four spec variants (authenticated, unauthenticated,
-invalid-token, multipart) with gzip decompression and logging pre-configured.
-This ensures every test uses identical transport settings.
+A factory provides four spec variants (authenticated, unauthenticated, invalid-token, multipart) with gzip decompression and request/response logging pre-configured, ensuring consistent transport settings across all tests.
 
 **3. Plan-aware assertions**  
-The test key is on the Free plan. PRO+/Scale-only endpoints return `403` or `404`
-instead of `200`. All gated tests use `isIn(200, 403, 404)` so the full suite
-passes on any plan tier without skipping tests.
+The test key is on the Free plan. PRO+/Scale-only endpoints return `403` or `404`. All gated-endpoint tests use `isIn(200, 403, 404)` so the full suite passes on any plan tier without conditionally skipping tests.
 
 **4. Documented vs observed behaviour**  
-Where the API deviates from its own docs (e.g. returning `404` instead of `403`
-on plan-gated endpoints, or omitting `X-RateLimit-*` headers), tests include a
-`.as("Expected X (documented) — API currently returns Y")` message so the gap
-is visible in every test report without causing a hard failure.
+Where the API deviates from its docs (e.g. returning `404` instead of `403` on plan-gated endpoints, omitting `X-RateLimit-*` headers), tests use `.as("Expected X — API currently returns Y")` so the gap is visible in reports without causing a false failure.
 
 **5. Schema validation**  
-Every endpoint with a confirmed response shape has field-level assertions:
-types, ranges (temperatures −90 to 60, coordinates in bounds), business logic
-constraints (used + remaining = limit, temp_max > temp_min).
+Confirmed response shapes are validated field by field: correct types, value ranges (temperatures −90 to 60 °C, coordinates within bounds), and business logic constraints (e.g. `used + remaining = limit`, `temp_max > temp_min`).
 
-**6. Separation of concerns**  
-- One test class per endpoint (weather package has 10 classes — one per route)
-- `common/` package covers cross-cutting concerns: auth, authz, validation, error codes, rate limits
-- Schema tests are isolated in `WeatherSchemaTests` so endpoint smoke tests stay fast
+**6. One class per endpoint**  
+Each API route has its own test class. Cross-cutting concerns (auth, validation, error codes, rate limits) live in `common/`. Schema tests are isolated in `WeatherSchemaTests` so smoke tests stay fast.
 
-### Coverage summary
+### Coverage
 
 | Package | Classes | Tests |
-|---------|---------|-------|
+|---------|:-------:|:-----:|
 | common | 5 | 33 |
 | weather | 10 | 104 |
 | account | 1 | 15 |
@@ -178,48 +188,62 @@ src/
 ├── main/
 │   ├── java/org/example/
 │   │   ├── config/
-│   │   │   ├── ApiConfig.java          # config.properties loader + env var override
-│   │   │   └── RequestSpecConfig.java  # RestAssured spec factory (auth/unauth/multipart)
+│   │   │   ├── ApiConfig.java           # loads config.properties + WAI_API_KEY env var
+│   │   │   └── RequestSpecConfig.java   # RestAssured spec factory
 │   │   ├── clients/
-│   │   │   ├── WeatherClient.java      # /v1/weather, /forecast, /current, /daily, /hourly,
-│   │   │   │                           #   /forecast14, /insights, /weather-geo, /ip-lookup
-│   │   │   ├── AccountClient.java      # /v1/usage
-│   │   │   ├── WebhookClient.java      # /v1/webhooks (POST/GET/DEL)
-│   │   │   ├── SmsClient.java          # /v1/sms/* (Scale only)
-│   │   │   └── ForestryClient.java     # /v1/trees/*, /v1/forestry/count-trees (PRO+)
+│   │   │   ├── WeatherClient.java       # /v1/weather, /forecast, /current, /daily,
+│   │   │   │                            #   /hourly, /forecast14, /insights,
+│   │   │   │                            #   /weather-geo, /ip-lookup
+│   │   │   ├── AccountClient.java       # /v1/usage
+│   │   │   ├── WebhookClient.java       # /v1/webhooks  POST · GET · DELETE
+│   │   │   ├── SmsClient.java           # /v1/sms/*  (Scale plan only)
+│   │   │   └── ForestryClient.java      # /v1/trees/*  /v1/forestry/count-trees  (PRO+)
 │   │   └── utils/
-│   │       ├── TestData.java           # all test constants (coords, phones, IDs…)
-│   │       └── TokenManager.java       # valid / invalid token helpers
+│   │       ├── TestData.java            # all constants — coords, phones, IDs…
+│   │       └── TokenManager.java        # valid / invalid API key helpers
 │   └── resources/
-│       ├── config.properties           # base URL, API key, image paths
-│       └── images/                     # farm images for forestry upload tests
+│       ├── config.properties            # base URL · image paths  (gitignored — no key)
+│       ├── config.properties.example    # committed template — safe to share
+│       └── images/                      # farm images for forestry upload tests
 └── test/
-    ├── java/
-    │   ├── common/                     # auth, authz, validation, rate limits, errors
-    │   ├── weather/                    # one class per endpoint
-    │   ├── account/
-    │   ├── webhooks/
-    │   ├── sms/
-    │   ├── forestry/
-    │   └── org/example/reports/
-    │       └── PdfReportGenerator.java # iText 7 PDF report from Surefire XML
-    └── resources/
-        └── testdata/                   # optional farm images for forestry tests
+    └── java/
+        ├── common/                      # auth · authz · validation · rate limits · errors
+        ├── weather/                     # one class per endpoint  (10 classes)
+        ├── account/
+        ├── webhooks/
+        ├── sms/
+        ├── forestry/
+        └── org/example/reports/
+            └── PdfReportGenerator.java  # iText 7 — builds PDF from Surefire XML
 ```
 
 ---
 
 ## CI / GitHub Actions
 
-The workflow runs on every push and pull request to `main`.
+The workflow triggers on every push and pull request to `master`.
 
-**View live results:**  
-👉 [GitHub Actions — CI runs](https://github.com/YOUR_GITHUB_USERNAME/WeatherAI_API_Test/actions)
+**Setup required before first run:**
 
-The `WAI_API_KEY` secret must be added in your repository:  
-`Settings → Secrets and variables → Actions → New repository secret`
+1. Go to your repository → **Settings → Secrets and variables → Actions**
+2. Click **New repository secret**
+3. Add:
+   ```
+   Name:  WAI_API_KEY
+   Value: wai_your_real_key_here
+   ```
 
-```
-Name:  WAI_API_KEY
-Value: wai_your_real_key_here
-```
+**What the workflow does:**
+
+| Step | Output |
+|------|--------|
+| Run 256 tests with `mvn clean test` | Surefire XML results |
+| Generate Allure HTML report | Uploaded as `allure-report` artifact |
+| Generate PDF report | Uploaded as `pdf-test-report` artifact |
+| Deploy Allure to GitHub Pages | Live at `YOUR_USERNAME.github.io/WeatherAI_API_Test/allure-report/` |
+| Publish test check on PR | Pass / fail visible on pull request |
+
+**View CI runs:**  
+👉 [GitHub Actions](https://github.com/YOUR_GITHUB_USERNAME/WeatherAI_API_Test/actions)
+
+**Download reports** from the **Artifacts** section of any completed workflow run.
