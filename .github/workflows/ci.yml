@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:       # allow manual trigger from GitHub UI
+
+jobs:
+  test:
+    name: Run API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Java setup ───────────────────────────────────────────────────────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # ── Run tests ────────────────────────────────────────────────────────────
+      - name: Run test suite
+        env:
+          WAI_API_KEY: ${{ secrets.WAI_API_KEY }}
+        run: mvn clean test --no-transfer-progress
+        # continue even if tests fail so reports are always uploaded
+        continue-on-error: true
+
+      # ── Upload Surefire XML results ───────────────────────────────────────────
+      - name: Upload Surefire test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-results
+          path: target/surefire-reports/
+          retention-days: 30
+
+      # ── Upload PDF report ─────────────────────────────────────────────────────
+      - name: Upload PDF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-test-report
+          path: target/pdf-report/test-report.pdf
+          retention-days: 30
+
+      # ── Generate Allure HTML report ───────────────────────────────────────────
+      - name: Generate Allure report
+        if: always()
+        run: mvn allure:report --no-transfer-progress
+
+      # ── Upload Allure HTML report ─────────────────────────────────────────────
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: target/site/allure-maven-plugin/
+          retention-days: 30
+
+      # ── Publish Allure to GitHub Pages ────────────────────────────────────────
+      - name: Deploy Allure report to GitHub Pages
+        if: github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: target/site/allure-maven-plugin
+          destination_dir: allure-report
+
+      # ── Publish test results as GitHub check ─────────────────────────────────
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: target/surefire-reports/TEST-*.xml
+          check_name: Test Results
+          comment_mode: always
+
+      # ── Fail the build if tests actually failed ───────────────────────────────
+      - name: Check test outcome
+        if: always()
+        run: |
+          if [ -f target/surefire-reports/*.xml ]; then
+            FAILURES=$(grep -r 'failures="[1-9]' target/surefire-reports/ | wc -l)
+            ERRORS=$(grep -r 'errors="[1-9]' target/surefire-reports/ | wc -l)
+            if [ "$FAILURES" -gt "0" ] || [ "$ERRORS" -gt "0" ]; then
+              echo "Tests failed — see surefire-results artifact"
+              exit 1
+            fi
+          fi

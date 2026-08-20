@@ -1,0 +1,47 @@
+# ─── Maven build output ──────────────────────────────────────────────────────
+target/
+
+# ─── Allure CLI (downloaded locally by allure-maven-plugin) ──────────────────
+.allure/
+
+# ─── CREDENTIALS — never commit these ────────────────────────────────────────
+# config.properties may contain the api.key value — keep it local only.
+# Use config.properties.example as the committed template instead.
+src/main/resources/config.properties
+src/test/resources/config.properties
+
+# Any .env files
+.env
+.env.*
+!.env.example
+
+# Private key files
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# ─── IDE files ───────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+*.class
+
+# ─── Farm images (binary assets) ─────────────────────────────────────────────
+# Place real images in src/main/resources/images/ locally.
+# Do not commit large binary files to git.
+src/main/resources/images/*.jpg
+src/main/resources/images/*.jpeg
+src/main/resources/images/*.png
+src/main/resources/images/*.webp
+# Allow the README in that directory
+!src/main/resources/images/README.md
+
+# ─── OS files ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

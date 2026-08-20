@@ -1,0 +1,27 @@
+# ─── WeatherAI API Configuration — EXAMPLE ──────────────────────────────────
+# Copy this file to config.properties and fill in your values.
+# config.properties is gitignored — this example file is safe to commit.
+#
+# RECOMMENDED: Set WAI_API_KEY as an environment variable instead of
+# editing config.properties directly. The environment variable always
+# takes priority over this file.
+#
+# Windows CMD:       set WAI_API_KEY=wai_your_key_here
+# Windows PowerShell: $env:WAI_API_KEY = "wai_your_key_here"
+# Linux / macOS:     export WAI_API_KEY=wai_your_key_here
+# GitHub Actions:    Settings → Secrets → WAI_API_KEY
+# ─────────────────────────────────────────────────────────────────────────────
+
+base.url=https://api.weather-ai.co
+
+# Leave blank — use WAI_API_KEY environment variable instead
+api.key=
+
+default.lat=-1.2921
+default.lon=36.8219
+
+connect.timeout=10000
+read.timeout=30000
+
+forestry.image.primary=images/sample-farm.jpg
+forestry.image.fallback=images/sample-farm.png
