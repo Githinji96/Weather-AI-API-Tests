@@ -12,6 +12,12 @@ jobs:
     name: Run API Tests
     runs-on: ubuntu-latest
 
+    # Explicit permissions required for check results and GitHub Pages deployment
+    permissions:
+      contents: write        # needed to push to gh-pages branch
+      checks: write          # needed to publish test results as a check
+      pull-requests: write   # needed to comment test results on PRs
+
     steps:
       # ── Checkout ─────────────────────────────────────────────────────────────
       - name: Checkout repository
@@ -30,8 +36,7 @@ jobs:
         env:
           WAI_API_KEY: ${{ secrets.WAI_API_KEY }}
         run: mvn clean test --no-transfer-progress
-        # continue even if tests fail so reports are always uploaded
-        continue-on-error: true
+        continue-on-error: true   # upload reports even when tests fail
 
       # ── Upload Surefire XML results ───────────────────────────────────────────
       - name: Upload Surefire test results
@@ -73,6 +78,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: target/site/allure-maven-plugin
           destination_dir: allure-report
+          force_orphan: true   # creates gh-pages branch automatically if it doesn't exist
 
       # ── Publish test results as GitHub check ─────────────────────────────────
       - name: Publish test results
@@ -87,11 +93,9 @@ jobs:
       - name: Check test outcome
         if: always()
         run: |
-          if [ -f target/surefire-reports/*.xml ]; then
-            FAILURES=$(grep -r 'failures="[1-9]' target/surefire-reports/ | wc -l)
-            ERRORS=$(grep -r 'errors="[1-9]' target/surefire-reports/ | wc -l)
-            if [ "$FAILURES" -gt "0" ] || [ "$ERRORS" -gt "0" ]; then
-              echo "Tests failed — see surefire-results artifact"
-              exit 1
-            fi
+          FAILURES=$(grep -r 'failures="[1-9]' target/surefire-reports/ 2>/dev/null | wc -l)
+          ERRORS=$(grep -r 'errors="[1-9]' target/surefire-reports/ 2>/dev/null | wc -l)
+          if [ "$FAILURES" -gt "0" ] || [ "$ERRORS" -gt "0" ]; then
+            echo "Tests failed — see surefire-results artifact"
+            exit 1
           fi
