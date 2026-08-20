@@ -436,8 +436,6 @@ On Windows, open it with:
 start "" "target\pdf-report\test-report.pdf"
 ```
 
-The PDF can be shared directly with stakeholders, recruiters, developers, or QA teams.
-
 ---
 
 ## CI / GitHub Actions
